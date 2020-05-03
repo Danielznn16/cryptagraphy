@@ -1,6 +1,7 @@
 #include<stdio.h>
 #include<string.h>   //数据表
-
+#include <iostream>
+using namespace std;
 //置换函数
 //参数： In：待置换数据指针
 //Out：置换输出指针
@@ -180,7 +181,7 @@ void mySubkey(char* K,char (*SK)[49])
     char out[57],C[57],D[29],e[29],t[57];
     int i=0,j=0;
     myPermutation(K,out,56,*PC_1);  //置换选择1
-    printf("%s\n", out);
+    // printf("%s\n", out);
     strcpy(C,out);      //C0
     strcpy(D,out+28);   //D0
     for(j=0; j<16; j++)
@@ -191,6 +192,7 @@ void mySubkey(char* K,char (*SK)[49])
         strcpy(D,e);                   //Dj
         strncpy(t, C, 28);
         strncpy(t+28, D, 28);
+        cout << j <<  ":" << std::hex << t << endl;
         myPermutation(t,*(SK+j),48,*PC_2);//置换选择2，得到Kj
     }
 }
@@ -252,6 +254,7 @@ int main()
     int i=0;
     mySubkey(K,SK);                //产生16轮子密钥
     myPermutation(M,out,64,*IP);   //初始置换IP
+    cout << "SK0: " <<  std::hex << SK[0] << endl;
     printf("IP置换：");
     puts(out);
     strcpy(L,out);      //L0
