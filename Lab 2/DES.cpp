@@ -4,10 +4,12 @@
 #include <stdio.h>
 #include <fstream> 
 #include <cstdlib>
+#include <ctime>
 #include "DES.h"
 using namespace std;
 typedef unsigned long long u64;
 
+const u64 mask28 = (1<<28)-1;
 // char* tmp = new char[64];
 // void swap_ip(char *);
 // void swap_ip_reverse(char *);
@@ -18,7 +20,7 @@ typedef unsigned long long u64;
 // void Substitution(char*,char*);
 // void Permutation(char*,char*);
 
-u64 enc(u64,u64);
+u64 enc(u64,u64*);
 u64 dec(u64,u64);
 
 int main(){
@@ -32,16 +34,46 @@ int main(){
             t[i] = 'a';
 		}
 		t[256*8] = '\0';
-	u64 brk = 0;
+	u64 K = 0;
     for(int i = 0; i < 8; i++){
-        brk = (brk<<8) + key[i];
+        K = (K<<8) + key[i];
     }
-    u64 tmp = brk;
-    for(int i = 0; i < 256; i++){
-        res[i] = enc(plane[i]^tmp,brk);
-        tmp = res[i];
+    u64 IV = K;
+    for(int i = 0; i < 8; i++){
+        // ((char*)(&tmp))[i] = rand()%256;
+        ((char*)(&IV))[i] = 'a';
     }
 
+    u64 tmp = 0;
+    for(int i = 0; i < 56; i++){
+        tmp = (tmp<<1)+((K>>(64-(PC_1[i])))&1);
+    }
+    K = tmp;
+    u64 keys[16] = {};
+    u64 leftK,rightK;
+    leftK = K>>28;
+    rightK = K%(1<<28);
+
+    for(int i = 0; i < 16; i++){
+        leftK = (leftK << shift[i]) + (leftK>>(28-shift[i]))&mask28;
+        rightK = (rightK << shift[i]) + (rightK>>(28-shift[i]))&mask28;
+        K = (leftK<<28)+rightK;
+        keys[i] = 0;
+        for(int j = 0; j < 48; j++){
+            keys[i] = (keys[i]<<1)+((K>>(56-PC_2[j]))&1);
+        }
+    }
+
+
+    clock_t a,b;
+    a = clock();
+    for(int i = 0; i < 256; i++){
+        res[i] = enc(plane[i]^IV,keys);
+        IV = res[i];
+    }
+    b = clock();
+    cout << "time: " << ((double)(b-a))/CLOCKS_PER_SEC << "s" << "  for: " << 256*64 << endl;
+    cout << "speed: " <<  ((double)256*64/(1024*1024))/(((double)(b-a))/CLOCKS_PER_SEC) << "Mbps" << endl;
 	ofstream outfile("./out.txt", ios::out); 
 	for(int i = 0; i < 256; i++){
         // cout << std::hex << res[i] << endl;
@@ -52,11 +84,11 @@ int main(){
 		outfile<<endl;
 	}
 	outfile.close();
+    exit(0);
 	return 0;
 }
-const u64 mask28 = (1<<28)-1;
 
-u64 enc(u64 m, u64 k){
+u64 enc(u64 M, u64 *keys){
 	// char* message= new char[65];
 	// {
 	// 	// string Mstr = "Hello Hi";
@@ -67,8 +99,6 @@ u64 enc(u64 m, u64 k){
  //    	// string Kstr = "PassWord";
  //    	strcpy(key,Kstr.c_str());
  //    }
-	u64 M = m;
-	u64 K = k;
     u64 tmp,tmp2;
     tmp2 = 0;
     // printf("Message:\n\t0x%llx\n", M);
@@ -79,31 +109,17 @@ u64 enc(u64 m, u64 k){
     	afterSip = (afterSip<<1)|((M>>(64-IP[i]))&1);
     }
     // cout << "SIP" << std::hex<<afterSip<<endl;
-    tmp = 0;
-    for(int i = 0; i < 56; i++){
-        tmp = (tmp<<1)+((K>>(64-(PC_1[i])))&1);
-    }
-    K = tmp;
     // 0xf0ccaaf556678f
     // cout << "PC_1: " << std::hex << K << endl;
     unsigned int * left;
     unsigned int * right;
     right = (unsigned int *)&afterSip;
     left = &right[1];
-    u64 keys[16] = {};
-    u64 leftK,rightK;
-    leftK = K>>28;
-    rightK = K%(1<<28);
+    
     // cout << (*left)<<endl<<(*right)<<endl<<afterSip<<endl;
     for(int i = 0; i < 16; i++){
-        leftK = (leftK << shift[i]) + (leftK>>(28-shift[i]))&mask28;
-        rightK = (rightK << shift[i]) + (rightK>>(28-shift[i]))&mask28;
-        K = (leftK<<28)+rightK;
         // cout << i <<  ":" << std::hex << K << endl;
-    	keys[i] = 0;
-    	for(int j = 0; j < 48; j++){
-        	keys[i] = (keys[i]<<1)+((K>>(56-PC_2[j]))&1);
-    	}
+    	
         tmp = 0;
         for(int j = 0; j < 48; j++){
             tmp = (tmp<<1)+(((*right)>>(32-E[j]))&1);
@@ -135,13 +151,13 @@ u64 enc(u64 m, u64 k){
 
     swap((*left),(*right));
 
-    K = 0;
+    M = 0;
     for(int i = 0; i < 64; i++){
-    	K = (K<<1)+((afterSip>>(64-IP_Reverse[i]))&1);
+    	M = (M<<1)+((afterSip>>(64-IP_Reverse[i]))&1);
     }
     // printf("cypher:\n\t0x%llx\n", K);
 
-	return K;
+	return M;
 }
 
 // void swap_ip(char* Plane){
