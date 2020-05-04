@@ -5,110 +5,115 @@
 #include <fstream> 
 #include <cstdlib>
 
-// #include <iostream> 
-#include <bitset> 
 using namespace std;  
+typedef unsigned int u32;
+void enc(char*, unsigned int*);
+void genKey(char*,char*);
+int main(){
+	char pass[] = {
+		0x2b,0x28,0xab,0x09,
+		0x7e,0xae,0xf7,0xcf,
+		0x15,0xd2,0x15,0x4f,
+		0x16,0xa6,0x88,0x3c
+	};
+	unsigned int key[44] = {0};
+	genKey(pass,(char*)key);
 
- 
-// 轮常数，密钥扩展中用到。（AES-128只需要10轮） 
-word Rcon[10] = {0x01000000, 0x02000000, 0x04000000, 0x08000000, 0x10000000,  
-         0x20000000, 0x40000000, 0x80000000, 0x1b000000, 0x36000000}; 
- 
-/** 
- * 将4个 byte 转换为一个 word 
- */ 
-word Word(byte& k1, byte& k2, byte& k3, byte& k4) 
-{ 
-  word result(0x00000000); 
-  word temp; 
-  temp = kto_ulong(); // K1 
-  temp <<= 24; 
-  result |= temp; 
-  temp = kto_ulong(); // K2 
-  temp <<= 16; 
-  result |= temp; 
-  temp = kto_ulong(); // K3 
-  temp <<= 8; 
-  result |= temp; 
-  temp = kto_ulong(); // K4 
-  result |= temp; 
-  return result; 
-} 
- 
-/** 
- * 按字节 循环左移一位 
- * 即把[a0, a1, a2, a3]变成[a1, a2, a3, a0] 
- */ 
-word RotWord(word& rw) 
-{ 
-  word high = rw << 8; 
-  word low = rw >> 24; 
-  return high | low; 
-} 
- 
-/** 
- * 对输入word中的每一个字节进行S-盒变换 
- */ 
-word SubWord(word& sw) 
-{ 
-  word temp; 
-  for(int i=0; i<32; i+=8) 
-  { 
-    int row = sw[i+7]*8 + sw[i+6]*4 + sw[i+5]*2 + sw[i+4]; 
-    int col = sw[i+3]*8 + sw[i+2]*4 + sw[i+1]*2 + sw[i]; 
-    byte val = S_Box[row][col]; 
-    for(int j=0; j<8; ++j) 
-      temp[i+j] = val[j]; 
-  } 
-  return temp; 
-} 
- 
-/** 
- * 密钥扩展函数 - 对128位密钥进行扩展得到 w[4*(Nr+1)] 
- */  
-void KeyExpansion(byte key[4*Nk], word w[4*(Nr+1)]) 
-{ 
-  word temp; 
-  int i = 0; 
-  // w[]的前4个就是输入的key 
-  while(i < Nk)  
-  { 
-    w[i] = Word(key[4*i], key[4*i+1], key[4*i+2], key[4*i+3]); 
-    ++i; 
-  } 
- 
-  i = Nk; 
- 
-  while(i < 4*(Nr+1)) 
-  { 
-    temp = w[i-1]; // 记录前一个word 
-    if(i % Nk == 0) 
-      w[i] = w[i-Nk] ^ SubWord(RotWord(temp)) ^ Rcon[i/Nk-1]; 
-    else  
-      w[i] = w[i-Nk] ^ temp; 
-    ++i; 
-  } 
-} 
- 
-int main() 
-{ 
-  byte key[16] = {0x2b, 0x7e, 0x15, 0x16,  
-          0x28, 0xae, 0xd2, 0xa6,  
-          0xab, 0xf7, 0x15, 0x88,  
-          0x09, 0xcf, 0x4f, 0x3c}; 
- 
-  word w[4*(Nr+1)]; 
- 
-  cout << "KEY IS: "; 
-  for(int i=0; i<16; ++i) 
-    cout << hex << key[i]to_ulong() << " "; 
-  cout << endl; 
- 
-  KeyExpansion(key, w); 
-  // 测试 
-  for(int i=0; i<4*(Nr+1); ++i) 
-    cout << "w[" << dec << i << "] = " << hex << w[i]to_ulong() << endl; 
- 
-  return 0; 
-} 
+	cout << "passW: ";
+	for(int i = 0; i < 16; i++){
+		if((unsigned int)(pass[i]&0b11111111)<16)
+			cout << "0";
+		cout << std::hex << (unsigned int)(pass[i]&0b11111111);
+	}cout << endl;
 
+	char plane[] = {
+		0x32,0x88,0x31,0xe0,
+		0x43,0x5a,0x31,0x37,
+		0xf6,0x30,0x98,0x07,
+		0xa8,0x8d,0xa2,0x34
+	};
+
+	cout << "plane: ";
+	for(int i = 0; i < 16; i++){
+		if((unsigned int)(plane[i]&0b11111111)<16)
+			cout << "0";
+		cout << std::hex << (unsigned int)(plane[i]&0b11111111);
+	}cout << endl;
+
+	enc(plane,key);
+
+	cout << "cyphe: ";
+
+	for(int k = 0; k < 4; k ++){
+		for(int l = 0; l < 4; l++){
+			if(((unsigned int)plane[k*4+l]&0b11111111)<16)
+				cout << '0';
+			cout << std::hex << ((unsigned int)(plane[k*4+l]&0b11111111));
+		}
+	// cout << endl;
+	}
+	cout << endl;
+
+}
+void genKey(char* K,char*key){
+	for(int j = 0; j < 16; j++){
+		key[j] = K[j]&0b11111111;
+		}
+	// return ;
+	unsigned char kr[4] = {0};
+
+	for(int i = 4; i < 44; i++){
+		if(i%4==0)
+			kr[0] = RC[i/4];
+		for(int j = 0; j < 4; j++)
+		if(j==0){
+			// key[i*4+j] = key[((i-4)/4*4+(i+1)%4)*4+3];
+			key[i*4+j] = key[i*4+j-16]^S_Box[key[((i-4)/4*4+(i+1)%4)*4+3]&0b11111111]^kr[i%4];
+		}else{
+			key[i*4+j] = key[i*4+j-1]^key[(i-4)*4+j];
+		}
+	}
+}
+char tmpChar[16] = {0};
+void enc(char* plane,unsigned int* key){
+	for(int i = 0; i < 4; i++){
+		// cout << endl <<std::hex << ((unsigned int *)plane)[i] << endl;
+		((unsigned int *)plane)[i] = ((unsigned int *)plane)[i]^key[i];
+		// cout << std::hex << ((unsigned int *)plane)[i] << endl;
+	}
+	for(int j = 1; j < 11; j++){
+		// subBytes
+		for(int i = 0; i < 16; i++)
+			plane[i] = S_Box[plane[i]&0b11111111];
+		// shiftRows
+		((unsigned int*)(&(plane[4])))[0] = (((unsigned int*)(&(plane[4])))[0] >> 8) + (((unsigned int*)(&(plane[4])))[0]<<24);
+		((unsigned int*)(&(plane[8])))[0] = (((unsigned int*)(&(plane[8])))[0] >> 16) + (((unsigned int*)(&(plane[8])))[0]<<16);
+		((unsigned int*)(&(plane[12])))[0] = (((unsigned int*)(&(plane[12])))[0] >> 24) + (((unsigned int*)(&(plane[12])))[0]<<8);
+
+		memcpy(tmpChar,plane,sizeof(char)*16);
+		// mixColumes
+		if(j!=10)
+			for(int i = 0; i < 4;i++){
+		        plane[i] = x2time(tmpChar[i]) ^ x3time(tmpChar[i+4*1]) ^ tmpChar[i+4*2] ^ tmpChar[i+4*3];
+		        plane[i+4*1] = tmpChar[i+4*0] ^ x2time(tmpChar[i+4*1]) ^ x3time(tmpChar[i+4*2]) ^ tmpChar[i+4*3];
+		        plane[i+4*2] = tmpChar[i+4*0] ^ tmpChar[i+4*1] ^ x2time(tmpChar[i+4*2]) ^ x3time(tmpChar[i+4*3]);
+		        plane[i+4*3] = x3time(tmpChar[i+4*0]) ^ tmpChar[i+4*1] ^ tmpChar[i+4*2] ^ x2time(tmpChar[i+4*3]);
+		    }
+
+		for(int i = 0; i < 4; i++){
+			((unsigned int *)plane)[i] = ((unsigned int *)plane)[i]^key[i+4*j];
+		}
+
+
+		// for(int k = 0; k < 4; k ++){
+		// 	for(int l = 0; l < 4; l++){
+		// 		if(((unsigned int)plane[k*4+l]&0b11111111)<16)
+		// 			cout << '0';
+		// 		cout << std::hex << ((unsigned int)plane[k*4+l]&0b11111111);
+		// 	}
+		// cout << endl;
+		// }
+		// cout << endl;
+
+	}
+}
